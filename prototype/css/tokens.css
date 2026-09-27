@@ -1,0 +1,252 @@
+/* ==========================================================================
+   GymLogger — Phase 1 design tokens
+   Single source of truth for colour, type, spacing, radius, elevation and
+   motion. Components must consume these tokens, never raw values, so the
+   same file can be reused by the ASP.NET Core web app (wwwroot/css) and
+   ported to the Phase 2 React app.
+
+   Theme model:
+     :root                       → light palette (default)
+     prefers-color-scheme: dark  → dark palette unless data-theme="light"
+     [data-theme="dark"]         → explicit dark
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+
+  --fs-xs: 0.75rem;    /* 12 — captions, table headers        */
+  --fs-sm: 0.875rem;   /* 14 — secondary text, meta           */
+  --fs-md: 1rem;       /* 16 — body, inputs (prevents iOS zoom) */
+  --fs-lg: 1.125rem;   /* 18 — card titles                    */
+  --fs-xl: 1.375rem;   /* 22 — section titles                 */
+  --fs-2xl: 1.75rem;   /* 28 — page titles (mobile)           */
+  --fs-3xl: 2.25rem;   /* 36 — page titles (desktop)          */
+  --fs-count: 1.625rem;/* 26 — set count inputs               */
+
+  --lh-tight: 1.15;
+  --lh-body: 1.5;
+
+  /* ---- Spacing (4px grid) ---------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  --gutter: 16px;          /* page side padding, grows with breakpoints */
+  --content-max: 1120px;   /* standard page width                       */
+  --focus-max: 760px;      /* active workout width                      */
+
+  /* ---- Touch targets ----------------------------------------------------- */
+  --tap: 44px;             /* minimum interactive size                  */
+  --tap-lg: 52px;          /* primary workout actions                   */
+
+  /* ---- Radius ------------------------------------------------------------ */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* ---- Motion ------------------------------------------------------------ */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+
+  /* ---- Neutrals (cool, biased toward the action blue) --------------------- */
+  --bg: #F2F4F8;
+  --surface: #FFFFFF;
+  --surface-2: #EDF0F5;
+  --surface-3: #E1E6EE;
+  --border: #D7DDE7;
+  --border-strong: #7F8A9C;  /* ≥3:1 on surfaces: form-control boundaries */
+  --text: #111722;
+  --text-2: #3A4454;
+  --text-muted: #5A6475;
+  --overlay: rgba(10, 14, 22, .48);
+
+  /* ---- Action / current workout ------------------------------------------ */
+  --primary: #1D4ED8;
+  --primary-hover: #1A45C2;
+  --primary-press: #163A9F;
+  --on-primary: #FFFFFF;
+  --primary-soft: #E6EDFD;
+  --primary-soft-text: #1A3FA3;
+  --focus-ring: #1D4ED8;
+
+  /* ---- Historical / reference data ("paper log") ---------------------------
+     Used ONLY for read-only historical values shown next to current data:
+     comparison columns, reference banners, previous-session cards.        */
+  --hist-bg: #F6EEDD;
+  --hist-bg-strong: #EFE2C6;
+  --hist-border: #DCC9A3;
+  --hist-text: #664B12;
+  --hist-strong: #47340A;
+
+  /* ---- Semantic: change direction (always paired with icon + sign) ------- */
+  --pos: #15703A;
+  --pos-bg: #E2F3E8;
+  --neg: #B42318;
+  --neg-bg: #FCE9E7;
+  --neu: #4F5969;
+  --neu-bg: #EAEDF2;
+
+  /* ---- Semantic: status & feedback --------------------------------------- */
+  --live: #15703A;          /* In progress */
+  --live-bg: #E2F3E8;
+  --done: #1A3FA3;          /* Completed   */
+  --done-bg: #E6EDFD;
+  --void: #4F5969;          /* Cancelled   */
+  --void-bg: #EAEDF2;
+  --warn: #875000;
+  --warn-bg: #FFF3D4;
+  --warn-border: #EDCB80;
+  --danger: #B42318;        /* destructive button fill */
+  --danger-hover: #971C12;
+  --danger-text: #B42318;
+  --danger-soft: #FCE9E7;
+  --on-danger: #FFFFFF;
+
+  /* ---- Charts ------------------------------------------------------------ */
+  --chart-series: #1D4ED8;
+  --chart-wash: rgba(29, 78, 216, .10);
+  --chart-grid: #E3E7EE;
+  --chart-axis: #5A6475;
+
+  /* ---- Elevation ----------------------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(17, 23, 34, .06), 0 1px 1px rgba(17, 23, 34, .04);
+  --shadow-2: 0 10px 30px rgba(17, 23, 34, .14), 0 2px 8px rgba(17, 23, 34, .08);
+  --shadow-bar: 0 -6px 18px rgba(17, 23, 34, .08);
+}
+
+@media (min-width: 768px)  { :root { --gutter: 24px; } }
+@media (min-width: 1280px) { :root { --gutter: 32px; } }
+
+/* ---- Dark palette: OS preference ------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0B0F16;
+    --surface: #131923;
+    --surface-2: #1A212D;
+    --surface-3: #242C3A;
+    --border: #283243;
+    --border-strong: #65728A;
+    --text: #E8ECF3;
+    --text-2: #C4CBD7;
+    --text-muted: #98A2B3;
+    --overlay: rgba(0, 0, 0, .62);
+
+    --primary: #7AA2FF;
+    --primary-hover: #93B4FF;
+    --primary-press: #6A93F2;
+    --on-primary: #0A1633;
+    --primary-soft: #18233D;
+    --primary-soft-text: #A9C1FF;
+    --focus-ring: #93B4FF;
+
+    --hist-bg: #221D13;
+    --hist-bg-strong: #2E2718;
+    --hist-border: #4B3F26;
+    --hist-text: #E2C68C;
+    --hist-strong: #F2DFB5;
+
+    --pos: #5CCB8B;
+    --pos-bg: #12291C;
+    --neg: #FF8A80;
+    --neg-bg: #34191A;
+    --neu: #A7B0BF;
+    --neu-bg: #1F2632;
+
+    --live: #5CCB8B;
+    --live-bg: #12291C;
+    --done: #A9C1FF;
+    --done-bg: #18233D;
+    --void: #A7B0BF;
+    --void-bg: #1F2632;
+    --warn: #F2B85B;
+    --warn-bg: #2C2211;
+    --warn-border: #5A4318;
+    --danger: #C4282E;
+    --danger-hover: #D8363C;
+    --danger-text: #FF8A80;
+    --danger-soft: #34191A;
+    --on-danger: #FFFFFF;
+
+    --chart-series: #5B8CF2;
+    --chart-wash: rgba(91, 140, 242, .12);
+    --chart-grid: #232B38;
+    --chart-axis: #98A2B3;
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-2: 0 12px 32px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .4);
+    --shadow-bar: 0 -6px 18px rgba(0, 0, 0, .45);
+  }
+}
+
+/* ---- Dark palette: explicit choice (mirrors the block above) --------------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F16;
+  --surface: #131923;
+  --surface-2: #1A212D;
+  --surface-3: #242C3A;
+  --border: #283243;
+  --border-strong: #65728A;
+  --text: #E8ECF3;
+  --text-2: #C4CBD7;
+  --text-muted: #98A2B3;
+  --overlay: rgba(0, 0, 0, .62);
+
+  --primary: #7AA2FF;
+  --primary-hover: #93B4FF;
+  --primary-press: #6A93F2;
+  --on-primary: #0A1633;
+  --primary-soft: #18233D;
+  --primary-soft-text: #A9C1FF;
+  --focus-ring: #93B4FF;
+
+  --hist-bg: #221D13;
+  --hist-bg-strong: #2E2718;
+  --hist-border: #4B3F26;
+  --hist-text: #E2C68C;
+  --hist-strong: #F2DFB5;
+
+  --pos: #5CCB8B;
+  --pos-bg: #12291C;
+  --neg: #FF8A80;
+  --neg-bg: #34191A;
+  --neu: #A7B0BF;
+  --neu-bg: #1F2632;
+
+  --live: #5CCB8B;
+  --live-bg: #12291C;
+  --done: #A9C1FF;
+  --done-bg: #18233D;
+  --void: #A7B0BF;
+  --void-bg: #1F2632;
+  --warn: #F2B85B;
+  --warn-bg: #2C2211;
+  --warn-border: #5A4318;
+  --danger: #C4282E;
+  --danger-hover: #D8363C;
+  --danger-text: #FF8A80;
+  --danger-soft: #34191A;
+  --on-danger: #FFFFFF;
+
+  --chart-series: #5B8CF2;
+  --chart-wash: rgba(91, 140, 242, .12);
+  --chart-grid: #232B38;
+  --chart-axis: #98A2B3;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .4);
+  --shadow-bar: 0 -6px 18px rgba(0, 0, 0, .45);
+}
