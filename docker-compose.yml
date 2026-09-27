@@ -1,0 +1,18 @@
+# Local SQL Server for development on macOS/Linux (Windows can use LocalDB instead).
+#   export MSSQL_SA_PASSWORD='Your_strong_password1'
+#   docker compose up -d
+#   dotnet user-secrets --project src/GYM.Web set ConnectionStrings:Gym \
+#     "Server=localhost,1433;Database=GymLogger;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - gym-sqlserver:/var/opt/mssql
+
+volumes:
+  gym-sqlserver:

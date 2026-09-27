@@ -1,14 +1,20 @@
-/* GymLogger prototype — end-to-end smoke test of the Phase 1 acceptance scenario
-   (spec §58) plus same-day separation (§30), user isolation (§26), role
-   protection (§28), offline autosave (§36) and responsive layout (§19).
+/* GymLogger — end-to-end smoke test of the Phase 1 acceptance scenario (spec §58)
+   plus same-day separation (§30), user isolation (§26), role protection (§28),
+   offline autosave (§36) and responsive layout (§19).
 
-   Run:  node prototype/tests/e2e-smoke.cjs [screenshotDir]
+   The same UI runs in two modes, and so does this test:
+     node prototype/tests/e2e-smoke.cjs [screenshotDir]                  prototype (mock API, file://)
+     BASE_URL=http://localhost:5039 node prototype/tests/e2e-smoke.cjs     real app (ASP.NET Core + database,
+                                                                          started in Development with demo data)
    Needs Playwright with Chromium (npm i -D playwright, or a global install). */
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
 
-const ROOT = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const BASE_URL = (process.env.BASE_URL || '').replace(/\/$/, '');
+const REAL = !!BASE_URL;
+const ROOT = REAL ? BASE_URL + '/' : 'file://' + path.resolve(__dirname, '..', 'index.html');
+const RUN = Date.now().toString(36); // unique names so the real database can be reused between runs
 const SHOTS = process.argv[2] || null;
 const WIDTHS = [320, 375, 390, 414, 768, 1024, 1280, 1440, 1920];
 let failures = 0;
@@ -21,16 +27,36 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED|net::/.test(m.text())) errors.push(m.text()); });
+  // Network logs for expected 4xx responses (wrong password, 404 for another user's data) are not JavaScript errors.
+  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED|net::|Failed to load resource/.test(m.text())) errors.push(m.text()); });
   const go = async (hash) => { await page.evaluate((h) => { location.hash = h; }, hash); await page.waitForTimeout(150); };
   const shot = async (name) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: path.join(SHOTS, name + '.png'), fullPage: true }); } };
+  const setOffline = async (on) => {
+    if (REAL) await ctx.setOffline(on);
+    else await page.evaluate((m) => window.GL.MockApi.setNetwork({ mode: m }), on ? 'offline' : 'normal');
+  };
   const login = async (email, pw) => {
-    await page.evaluate(() => { window.GL.Api.clearAuth(); location.hash = '#/login'; });
+    await page.evaluate(async () => {
+      if (window.GL.Api.user) { try { await window.GL.Api.logout(); } catch (e) { /* already signed out */ } }
+      window.GL.Api.clearAuth();
+      location.hash = '#/login';
+    });
     await page.waitForSelector('#login-email');
     await page.fill('#login-email', email);
     await page.fill('#login-password', pw);
     await page.click('form button[type="submit"]');
   };
+
+  console.log('Mode: ' + (REAL ? 'real app at ' + BASE_URL : 'prototype (mock API)'));
+  // Another user's workout id, for the isolation check.
+  let otherWorkoutId = 'ws-other-1';
+  if (REAL) {
+    const { request } = require('playwright');
+    const api = await request.newContext({ baseURL: BASE_URL, extraHTTPHeaders: { 'X-Requested-With': 'XMLHttpRequest' } });
+    await api.post('/api/v1/auth/login', { data: { email: 'other@gymlogger.test', password: 'Other@1234' } });
+    otherWorkoutId = (await (await api.get('/api/v1/workouts?pageSize=1')).json()).data.items[0].id;
+    await api.dispose();
+  }
 
   console.log('Authentication');
   await page.goto(ROOT);
@@ -57,7 +83,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   await page.click('form button[type="submit"]');
   await page.waitForSelector('.field-error');
   ok((await page.textContent('.field-error')).includes('already exists'), 'duplicate email is rejected on the email field');
-  await page.fill('#reg-email', 'new.lifter@example.com');
+  await page.fill('#reg-email', 'new.lifter.' + RUN + '@example.com');
   await page.click('form button[type="submit"]');
   await page.waitForSelector('.banner--success');
   ok(page.url().includes('registered=1'), 'registration redirects to sign in');
@@ -103,18 +129,26 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   await shot('03-workout');
 
   console.log('Offline autosave');
-  await page.evaluate(() => window.GL.MockApi.setNetwork({ mode: 'offline' }));
+  const squatSets = () => page.locator('.ex-card', { has: page.locator('h2', { hasText: 'Back Squat' }) }).locator('[data-count]').count();
+  await setOffline(true);
   await addSets('Back Squat', [8]);
   await page.waitForSelector('.save-state--offline', { timeout: 5000 });
   ok(true, 'offline change is queued and shown as waiting');
   ok(await page.locator('.net-banner:not([hidden])').count() === 1, 'offline banner is visible');
-  await page.reload();
-  await page.waitForSelector('.wk-header');
-  const afterReload = await page.locator('.ex-card', { has: page.locator('h2', { hasText: 'Back Squat' }) }).locator('[data-count]').count();
-  ok(afterReload === 3, 'queued set survives a page refresh while offline (' + afterReload + ' sets)');
-  await page.evaluate(() => window.GL.MockApi.setNetwork({ mode: 'normal' }));
+  if (!REAL) {
+    // The prototype page can reload while "offline"; a real offline browser cannot fetch the page.
+    await page.reload();
+    await page.waitForSelector('.wk-header');
+    ok(await squatSets() === 3, 'queued set survives a page refresh while offline');
+  }
+  await setOffline(false);
   await page.waitForSelector('.save-state--saved', { timeout: 10000 });
   ok(true, 'queue syncs after reconnecting');
+  if (REAL) {
+    await page.reload();
+    await page.waitForSelector('.wk-header');
+    ok(await squatSets() === 3, 'synced sets are stored on the server (3 after reload)');
+  }
 
   console.log('Finish + second same-day session');
   await page.click('[data-finish]');
@@ -148,15 +182,16 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   await page.waitForSelector('.summary-hero');
 
   console.log('History, comparison and analytics');
-  await go('#/exercise/ex-bench?tab=history');
+  const benchId = await page.evaluate(async () => (await window.GL.Api.exercises({ search: 'Bench Press' })).items.find((x) => x.name === 'Bench Press').id);
+  await go('#/exercise/' + benchId + '?tab=history');
   await page.waitForSelector('.day-group');
   const todayGroup = await page.locator('.day-group').first().textContent();
   ok(todayGroup.includes('2 separate sessions'), 'same-day sessions are listed separately in exercise history');
   await shot('06-exercise-history');
-  await go('#/exercise/ex-bench/compare');
+  await go('#/exercise/' + benchId + '/compare');
   await page.waitForSelector('.cmp-table');
   ok(await page.locator('.cmp-table tbody tr').count() >= 1, 'compare view renders set-by-set table');
-  await go('#/exercise/ex-bench?tab=progress');
+  await go('#/exercise/' + benchId + '?tab=progress');
   await page.waitForSelector('[data-line] svg');
   ok(await page.locator('.series-line').count() === 1, 'progress chart renders');
   await shot('07-progress');
@@ -165,7 +200,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   await shot('08-history');
 
   console.log('Security & roles');
-  await go('#/history/ws-other-1');
+  await go('#/history/' + otherWorkoutId);
   await page.waitForSelector('h1');
   ok((await page.textContent('h1')).includes("can't find"), "another user's workout is not found");
   await go('#/admin/exercises');
@@ -187,7 +222,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   await page.click('.sticky-save button[type="submit"]');
   await page.waitForSelector('.field-error >> text=already exists');
   ok(true, 'duplicate exercise name is rejected');
-  await page.fill('#f-name', 'Cable Fly');
+  await page.fill('#f-name', 'Cable Fly ' + RUN);
   await page.fill('#f-inst', 'Set the pulleys high.\nBring the handles together.');
   await page.click('.sticky-save button[type="submit"]');
   await page.waitForSelector('[data-media-section] .dropzone');
@@ -200,7 +235,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
   console.log('Responsive layout (no horizontal scroll)');
   await login('demo@gymlogger.test', 'Demo@1234');
   await page.waitForSelector('.hero-card');
-  const routes = ['#/', '#/history', '#/progress', '#/library', '#/exercise/ex-bench?tab=progress', '#/exercise/ex-bench/compare', '#/profile'];
+  const routes = ['#/', '#/history', '#/progress', '#/library', '#/exercise/' + benchId + '?tab=progress', '#/exercise/' + benchId + '/compare', '#/profile'];
   for (const w of WIDTHS) {
     await page.setViewportSize({ width: w, height: 900 });
     const bad = [];

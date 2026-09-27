@@ -15,14 +15,16 @@ It has two parts:
 | [02 — Information architecture and flows](02-information-architecture.md) | Sitemap, navigation per breakpoint, route table, session lifecycle, the core flows as diagrams, failure paths |
 | [03 — Screen specifications](03-screens.md) | Each screen and dialog: content, actions, states, validation, API calls, QA references |
 | [04 — Design system](04-design-system.md) | Principles, colour tokens with contrast ratios, type, spacing, breakpoints, component inventory, charts, content style |
-| [05 — Quality and handoff](05-quality-and-handoff.md) | WCAG 2.2 AA checklist (§33), responsive matrix (§19), QA traceability, **API additions the UI needs**, Razor Pages implementation guide, Phase 2/3 portability |
+| [05 — Quality and handoff](05-quality-and-handoff.md) | WCAG 2.2 AA checklist (§33), responsive matrix (§19), QA traceability, **API additions the UI needs**, how the UI is implemented, Phase 2/3 portability |
 
 ## Try the prototype
 
 ```bash
-# Any static server works, or open prototype/index.html directly in a browser.
-npx serve prototype        # then open the printed URL
+# Open prototype/index.html directly in a browser, or serve the repository root:
+npx serve .                # then open http://localhost:3000/prototype/
 ```
+
+The prototype loads the production web UI from `src/GYM.Web/wwwroot` and adds an in-browser mock of the API. To run the real application instead, see the [root README](../../README.md).
 
 Sign in with a demo account (listed on the sign-in screen):
 

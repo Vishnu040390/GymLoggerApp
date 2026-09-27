@@ -1,29 +1,22 @@
 # GymLogger Phase 1 — UX prototype
 
-A clickable, dependency-free prototype of every Phase 1 screen. Open `index.html` in a browser, or serve the folder (`npx serve prototype`). The specification it implements is in [`docs/ui-ux`](../docs/ui-ux/README.md).
+A clickable prototype of every Phase 1 screen that needs no server. It loads the **production web UI** from [`src/GYM.Web/wwwroot`](../src/GYM.Web/wwwroot) and adds an in-browser mock of the `/api/v1` contract, so design review always matches the real application.
 
-> This is a design artefact, not production code. Business rules are duplicated in `js/domain.js` and `js/mock-api.js` **only** so the prototype runs without a server. In the real system they live in `GYM.Domain` and `GYM.Application` (C#), per spec §2 and §49.
+Open `prototype/index.html` in a browser, or run `npx serve .` from the repository root and browse to `/prototype/`. The specification it implements is in [`docs/ui-ux`](../docs/ui-ux/README.md).
+
+> The mock duplicates business rules **only** so the prototype runs without a server. The real rules live in `GYM.Domain` and `GYM.Application` (C#) (spec §2, §49).
 
 ## Structure
 
 ```
-index.html            entry point (classic scripts, works from file://)
-css/tokens.css        design tokens: colour (light/dark), type, spacing, radius, motion
-css/app.css           layout shells and components (consumes tokens only)
-js/util.js            DOM, date and storage helpers
-js/icons.js           inline SVG icon set
-js/domain.js          comparison, analytics and validation rules (also used by the Node tests)
-js/mock-db.js         seeded data that mirrors the SQL Server schema
-js/mock-api.js        mock /api/v1: envelope, auth, roles, isolation, idempotency, network simulation
-js/api-client.js      typed client used by every screen (swap transport() for fetch())
-js/sync.js            workout autosave queue: offline, retry, idempotent, survives refresh
-js/ui.js              components: dialogs, toasts, menus, badges, states, form errors
-js/charts.js          line, column and sparkline charts with keyboard tooltips
-js/app.js             router, layout shells, prototype controls
-js/views/*.js         screens (IDs match docs/ui-ux/03-screens.md)
-tests/domain.test.cjs unit tests (node --test)
-tests/e2e-smoke.cjs   Playwright end-to-end smoke test
+index.html              loads ../src/GYM.Web/wwwroot/{css,js} plus the two mock files below
+js/mock-db.js           seeded data mirroring the SQL Server schema, demo accounts
+js/mock-api.js          mock /api/v1: envelope, auth, roles, isolation, idempotency, network simulation
+tests/domain.test.cjs   unit tests for the client-side rules (node --test)
+tests/e2e-smoke.cjs     Playwright end-to-end smoke test, for the prototype or (with BASE_URL) the real app
 ```
+
+With the mock loaded, the UI also shows the **Prototype** controls. They switch accounts, simulate slow, offline or failing network, change the theme, reset data and show recent API calls. It also shows the Screen index (`#/screens`) and UI kit (`#/ui-kit`). None of these exist in the real application.
 
 ## Demo accounts
 

@@ -89,7 +89,7 @@ Validated automatically at 320, 375, 390, 414, 768, 1024, 1280, 1440 and 1920 px
 
 ## 4.6 Components
 
-Each component maps to a function in `prototype/js/ui.js` or a class in `app.css`. In ASP.NET Core these become **partial views or tag helpers**. In Phase 2 they become **React components** with the same names.
+Each component maps to a function in `src/GYM.Web/wwwroot/js/ui.js` or a class in `app.css`. In Phase 2 they become **React components** with the same names.
 
 | Component | Anatomy and variants | States | Accessibility |
 |---|---|---|---|
@@ -130,7 +130,7 @@ Each component maps to a function in `prototype/js/ui.js` or a class in `app.css
 
 ## 4.8 Iconography
 
-A single inline SVG set on a 24 px grid with 2 px stroke and round caps (`prototype/js/icons.js`, about 50 icons). Icons are decorative (`aria-hidden`) unless they are the only content of a control, in which case the control carries the label. Key meanings are fixed: **clock-arrow = history / previous**, **⇄ = compare**, **flag = finish**, **⊘ = cancelled or cancel**, **cloud ✓ = saved**, **wifi-off = offline**.
+A single inline SVG set on a 24 px grid with 2 px stroke and round caps (`src/GYM.Web/wwwroot/js/icons.js`, about 50 icons). Icons are decorative (`aria-hidden`) unless they are the only content of a control, in which case the control carries the label. Key meanings are fixed: **clock-arrow = history / previous**, **⇄ = compare**, **flag = finish**, **⊘ = cancelled or cancel**, **cloud ✓ = saved**, **wifi-off = offline**.
 
 ## 4.9 Content style guide
 

@@ -1,0 +1,64 @@
+# Build and test on every push and pull request (spec §44: a failed quality gate blocks promotion).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore GYM.sln
+      - run: dotnet build GYM.sln --no-restore -c Release
+      - run: dotnet test GYM.sln --no-build -c Release --logger trx --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+
+  ui-smoke:
+    name: UI smoke test (prototype and real app)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: JavaScript domain tests
+        run: node --test prototype/tests/domain.test.cjs
+      - name: Prototype (mock API)
+        run: node prototype/tests/e2e-smoke.cjs
+      - name: Start the web app (SQLite, demo data)
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5080
+          Database__Provider: Sqlite
+          ConnectionStrings__Gym: Data Source=App_Data/ci.db
+        run: |
+          dotnet build src/GYM.Web -c Release
+          nohup dotnet run --project src/GYM.Web -c Release --no-build --no-launch-profile > web.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:5080/health && exit 0; sleep 1; done
+          cat web.log; exit 1
+      - name: Real app (ASP.NET Core + database)
+        env:
+          BASE_URL: http://127.0.0.1:5080
+        run: node prototype/tests/e2e-smoke.cjs

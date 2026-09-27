@@ -52,7 +52,7 @@ node --test prototype/tests/domain.test.cjs
 
 ## 5.4 API contract notes for the backend
 
-The UI works against §14. It needs the following additions or clarifications. All of them are implemented in the prototype's mock API (`prototype/js/mock-api.js`), which can serve as an executable reference.
+The UI works against §14 plus the following additions and clarifications. All of them are **implemented in the ASP.NET Core API** (`src/GYM.Web/Controllers`) and mirrored by the prototype's mock (`prototype/js/mock-api.js`).
 
 | Endpoint | Status | Why the UI needs it |
 |---|---|---|
@@ -81,26 +81,24 @@ Cross-cutting:
 - **404, not 403, for another user's records** (D13).
 - **Schema additions:** `ExerciseMedia.AltText` (required for images), `ExerciseMedia.Title`, and optionally `ExerciseMedia.DurationSeconds` (Q5).
 
-## 5.5 Implementing the UI in Phase 1 (ASP.NET Core)
+## 5.5 How the UI is implemented in Phase 1 (ASP.NET Core)
 
-Recommended: **ASP.NET Core Razor Pages** for the web front end, calling the same application services as the REST API, with a small amount of progressive-enhancement JavaScript for the active workout.
+The web UI is implemented as a **dependency-free JavaScript client** in `src/GYM.Web/wwwroot`, served by ASP.NET Core and calling the REST API. This keeps the API the only way in for every client (spec §3.1 "API-first", §52), so Phase 2 (React) and Phase 3 (React Native) reuse the same contracts. The prototype in `/prototype` loads the **same files** plus an in-browser mock of the API, so design review and the production UI cannot drift apart.
 
-| Prototype asset | Phase 1 destination |
+| Asset | Location |
 |---|---|
-| `css/tokens.css`, `css/app.css` | `src/GYM.Web/wwwroot/css/` unchanged (or split per component). No CSS framework is needed. |
-| `js/icons.js` | An SVG sprite (`wwwroot/icons.svg`) plus an `<icon name="…">` tag helper |
-| `UI.*` components | Partial views and tag helpers: `_SessionCard`, `_StatTile`, `_StatusBadge`, `_Delta`, `_EmptyState`, `_ErrorState`, `<dialog>` partial, `_FormField` |
-| Screens (`js/views/*.js`) | Razor Pages under `/Pages` with the same routes (2.3). Admin pages go in an `/Admin` area with `[Authorize(Roles="Admin")]`. |
-| Active workout (`views/workout.js` + `sync.js`) | Keep as a **JavaScript module on the Razor page**, calling the REST API. It needs client-side state, autosave, offline queueing and idempotency. Replace `transport()` in `api-client.js` with `fetch()` (the snippet is in that file). |
-| Charts (`js/charts.js`) | Reuse as-is (no dependency), rendered client-side from `/analytics` JSON |
-| `domain.js` | **Reference only.** Business rules belong in `GYM.Domain` and `GYM.Application` (C#). The browser copy exists only so the prototype runs without a server. The C# unit tests should reproduce `prototype/tests/domain.test.cjs`. |
+| Tokens and components (`tokens.css`, `app.css`) | `src/GYM.Web/wwwroot/css/` |
+| Screens, router, components, charts, sync queue | `src/GYM.Web/wwwroot/js/` |
+| API client (`api-client.js`) | Uses `fetch()` against `/api/v1` with the HttpOnly cookie. It switches to the mock only when `GL.MockApi` is loaded (prototype). |
+| Mock API and seed data | `prototype/js/mock-api.js`, `prototype/js/mock-db.js` (prototype only) |
+| `domain.js` | Client-side validation and display helpers only. The canonical rules are in `GYM.Domain` (C#) and covered by `src/GYM.Tests/Unit`. |
 
-Implementation notes:
+Implementation notes (as built):
 
-- Anti-forgery tokens on Razor forms, plus cookie authentication for the web app. The API accepts cookie or bearer tokens so Phase 2 and 3 clients can use it (§15).
-- Server-side validation must match the client messages in [03-screens.md](03-screens.md), because the UI shows server messages directly.
-- Media: validate extension, MIME type (by sniffing content) and size on the server, store under generated names, and serve thumbnails (§23).
-- Self-host the Barlow and Barlow Condensed fonts. Add a strict CSP (the prototype has no inline event handlers).
+- **Authentication:** cookie authentication (HttpOnly, SameSite=Strict, 8-hour sliding session). State-changing API calls must send `X-Requested-With` (CSRF defence). Phase 3 mobile clients will need a bearer-token scheme alongside it (§15).
+- **Validation:** server-side messages match [03-screens.md](03-screens.md), and the UI shows them as-is.
+- **Media:** extension, MIME type, file signature (magic bytes) and size are checked on the server. Files are stored under generated names outside `wwwroot` and served with `nosniff` (§23).
+- **Response headers:** the CSP is `script-src 'self'`; the UI has no inline scripts or handlers. The fonts are still loaded from Google Fonts; self-hosting them is a follow-up.
 
 ## 5.6 Phase 2 (React) and Phase 3 (React Native) portability
 

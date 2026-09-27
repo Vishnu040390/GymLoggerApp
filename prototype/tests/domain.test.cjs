@@ -3,7 +3,7 @@
    The C# unit tests in GYM.Tests should cover the same cases (spec §25, §30, §31). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const D = require('../js/domain.js');
+const D = require('../../src/GYM.Web/wwwroot/js/domain.js');
 
 const sets = (...counts) => counts.map((count, i) => ({ setNumber: i + 1, count }));
 

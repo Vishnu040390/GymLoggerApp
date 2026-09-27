@@ -3,3 +3,11 @@ node_modules/
 *.log
 test-results/
 screenshots/
+
+# ASP.NET Core
+bin/
+obj/
+**/App_Data/
+*.user
+.vs/
+TestResults/

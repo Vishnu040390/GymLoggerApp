@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- HTTP concerns only: routing, auth, middleware, API responses, static web UI (spec §4). -->
+  <PropertyGroup>
+    <UserSecretsId>gym-web-6f1c2d7e</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GYM.Application\GYM.Application.csproj" />
+    <ProjectReference Include="..\GYM.Infrastructure\GYM.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="App_Data\**" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+</Project>

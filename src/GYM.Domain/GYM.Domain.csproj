@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Entities, enums, business rules. No dependency on SQL Server, HTTP or UI (spec §4). -->
+</Project>
