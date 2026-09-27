@@ -1,0 +1,57 @@
+# Deploys the web app to the Azure TEST environment (spec §42, §44).
+# One-time setup: run deploy/azure/create-test-environment.sh, then add the repository
+# variable AZURE_WEBAPP_NAME and the secret AZURE_WEBAPP_PUBLISH_PROFILE.
+# Until the variable exists this workflow is skipped, so it never fails an unconfigured fork.
+name: Deploy to test
+
+on:
+  push:
+    branches: [main, claude/jolly-gates-t1qagy]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Test, publish and deploy
+    if: vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: test
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Quality gate: nothing reaches the test environment unless the tests pass (spec §44).
+      - run: dotnet test GYM.sln -c Release
+
+      - name: Publish
+        run: dotnet publish src/GYM.Web -c Release -o publish --no-restore
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
+
+      # Smoke test (spec §41): the app starts, reaches the database and serves the UI.
+      # The first start applies migrations and can take a few minutes on the Free plan.
+      - name: Smoke test
+        run: |
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          for i in $(seq 1 40); do
+            if curl -sf "$url/health" | grep -q Healthy; then
+              curl -sf -o /dev/null "$url/" && echo "Healthy: $url" && exit 0
+            fi
+            echo "Waiting for $url ($i/40)"; sleep 15
+          done
+          echo "The app did not report Healthy. Check Log stream in the Azure portal."; exit 1

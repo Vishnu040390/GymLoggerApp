@@ -20,7 +20,8 @@ GYM.sln
 │   └── GYM.Tests/           Unit · Integration · API · Security
 ├── prototype/               UX prototype: the same web UI running on an in-browser mock API
 ├── docs/ui-ux/              Phase 1 UI/UX specification
-└── .github/workflows/ci.yml build, .NET tests, UI smoke tests (prototype and real app)
+├── deploy/azure/            one-command setup for the Azure test environment
+└── .github/workflows/       ci.yml (build, tests on SQLite and SQL Server, UI smoke tests), deploy-test.yml
 ```
 
 Dependencies point inwards: `Web → Application → Domain` and `Infrastructure → Application → Domain`. The application layer depends only on abstractions (`IWorkoutRepository`, `IClock`, `IFileStorage` and so on). Infrastructure supplies the implementations through dependency injection (spec §3–§6).
@@ -59,7 +60,11 @@ dotnet ef database update -p src/GYM.Infrastructure -s src/GYM.Web
 dotnet ef migrations script -p src/GYM.Infrastructure -s src/GYM.Web -o migrate.sql   # for review
 ```
 
-### Demo accounts (Development only)
+### Option C — shared test site on Azure
+
+A hosted test environment (App Service + Azure SQL, free tiers) deploys automatically from GitHub Actions. One-time setup takes about 10 minutes: see [docs/deployment/test-environment.md](docs/deployment/test-environment.md).
+
+### Demo accounts (Development and Test)
 
 | Account | Email | Password |
 |---|---|---|
@@ -78,6 +83,8 @@ node --test prototype/tests/domain.test.cjs                     # client-side ru
 node prototype/tests/e2e-smoke.cjs                              # browser smoke test on the prototype (Playwright)
 BASE_URL=http://localhost:5039 node prototype/tests/e2e-smoke.cjs   # same test against the running app
 ```
+
+CI also runs the API and security tests, and the browser smoke test, against **SQL Server** in a container, with the real EF Core migrations applied. Locally you can do the same by setting `GYM_TEST_SQLSERVER` to a SQL Server connection string without a database name.
 
 The API tests host the whole application (real middleware, authentication and EF Core) on an in-memory SQLite database. They cover:
 
@@ -127,7 +134,6 @@ How it behaves:
 
 ## Known gaps before production
 
-- **SQL Server testing:** the SQL Server migration is generated but has not been run against a SQL Server instance yet. Automated tests run on SQLite.
 - **Data Protection keys:** configure persistent, encrypted key storage so authentication cookies survive restarts and work across instances.
 - **Media storage:** uploads are stored on local disk. Move them to blob storage behind `IFileStorage` for multi-instance hosting.
 - **Missing account features:** password reset, email verification and account deletion (see `docs/ui-ux/01-analysis.md` §1.5).

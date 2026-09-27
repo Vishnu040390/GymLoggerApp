@@ -8,26 +8,41 @@ using Microsoft.Data.Sqlite;
 namespace GYM.Tests.Support;
 
 /// <summary>
-/// Hosts the real application (all layers, real middleware) on a private in-memory
-/// SQLite database. Each test class gets its own database via IClassFixture.
+/// Hosts the real application (all layers, real middleware) on a private database.
+/// Each test class gets its own database via IClassFixture.
+/// By default that is an in-memory SQLite database. Set GYM_TEST_SQLSERVER to a SQL Server
+/// connection string (without a database name) to run the same tests against SQL Server,
+/// with the real EF Core migrations applied (CI does this in a SQL Server container).
 /// </summary>
 public sealed class GymApiFactory : WebApplicationFactory<Program>
 {
-    private readonly string connectionString = $"Data Source=gymtests-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+    private static readonly string? SqlServer = Environment.GetEnvironmentVariable("GYM_TEST_SQLSERVER");
     private readonly string mediaRoot = Path.Combine(Path.GetTempPath(), "gym-tests-media-" + Guid.NewGuid().ToString("N"));
-    private readonly SqliteConnection keepAlive;
+    private readonly string connectionString;
+    private readonly SqliteConnection? keepAlive;
 
     public GymApiFactory()
     {
-        // An in-memory SQLite database lives as long as one connection to it is open.
-        keepAlive = new SqliteConnection(connectionString);
-        keepAlive.Open();
+        if (string.IsNullOrWhiteSpace(SqlServer))
+        {
+            // An in-memory SQLite database lives as long as one connection to it is open.
+            connectionString = $"Data Source=gymtests-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+            keepAlive = new SqliteConnection(connectionString);
+            keepAlive.Open();
+        }
+        else
+        {
+            connectionString = $"{SqlServer.TrimEnd(';')};Database=gymtests_{Guid.NewGuid():N}";
+        }
     }
+
+    public static bool UsesSqlServer => !string.IsNullOrWhiteSpace(SqlServer);
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Database:Provider", "Sqlite");
+        builder.UseSetting("Database:Provider", UsesSqlServer ? "SqlServer" : "Sqlite");
+        builder.UseSetting("Database:ApplyMigrationsOnStartup", "true");
         builder.UseSetting("ConnectionStrings:Gym", connectionString);
         builder.UseSetting("Seed:ReferenceData", "true");
         builder.UseSetting("Seed:DemoData", "true");
@@ -72,7 +87,7 @@ public sealed class GymApiFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
         if (disposing)
         {
-            keepAlive.Dispose();
+            keepAlive?.Dispose();
             if (Directory.Exists(mediaRoot))
             {
                 Directory.Delete(mediaRoot, recursive: true);
