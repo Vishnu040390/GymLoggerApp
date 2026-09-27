@@ -4,7 +4,7 @@ The test environment runs the real application (ASP.NET Core + Azure SQL) at a p
 
 | Part | Azure service | Cost |
 |---|---|---|
-| Web app | App Service, Linux, **Free F1** plan | Free (60 CPU minutes/day, sleeps when idle) |
+| Web app | App Service, Linux, **Free F1** plan | Free (60 CPU minutes/day, sleeps when idle). Basic B1 is about USD 13/month if F1 isn't available (see [Troubleshooting](#troubleshooting-the-setup-script)). |
 | Database | Azure SQL Database, serverless, **free offer** | Free (pauses if the monthly free allowance runs out) |
 
 Every push to `main` or `claude/jolly-gates-t1qagy` runs the tests, deploys, and checks `/health`. You can also run it by hand from the Actions tab.
@@ -34,6 +34,19 @@ Other options you can set in front of the command:
 - `DEMO_TIME_ZONE`: for example `Asia/Kolkata`, so demo workout times read naturally.
 - `ADMIN_EMAIL`: the admin sign-in address.
 - `SQL_FREE=false`: if your subscription has already used its free Azure SQL database.
+- `PLAN_SKU=B1`: the smallest paid plan, if your subscription has no free (F1) quota.
+- `SQL_LOCATION`: a different region for the database only.
+
+The script is safe to run again after fixing a problem. It reuses whatever it has already created.
+
+### Troubleshooting the setup script
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Operation cannot be completed without additional quota ... Current Limit (F1 VMs): 0` | New and free-trial subscriptions often have no free App Service quota in busy regions such as `eastus`. | Use another region: `APP_NAME=... LOCATION=centralindia bash create-test-env.sh` (or `southindia`, `westeurope`, `uksouth`, `westus2`). You can also ask for quota: Azure portal → **Quotas** → App Service → your region → F1 → new limit **1**. Or use the paid plan: add `PLAN_SKU=B1`. |
+| `Location '...' is not accepting creation of new Windows Azure SQL Database servers` | Azure SQL capacity is restricted in that region for your subscription. | Add `SQL_LOCATION=centralindia` (or another region) and run the script again. The web app can stay where it is. |
+| `Selected user account does not exist in tenant ...` | The Microsoft account has no Azure subscription yet. | Sign up at [azure.microsoft.com/free](https://azure.microsoft.com/free), then open Cloud Shell from [portal.azure.com](https://portal.azure.com). |
+| `Website with given name ... already exists` | Site names are unique across all of Azure. | Pick a different `APP_NAME`. |
 
 ### 2. Connect GitHub
 
